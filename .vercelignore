@@ -1,0 +1,8 @@
+.git
+__pycache__
+*.pyc
+*.log
+tunnel_url.txt
+server.log
+cloudflared.log
+.archive_vite/

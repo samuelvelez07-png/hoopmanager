@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="HoopManager - Plataforma de administración de torneos de baloncesto, creación y edición de nóminas (5 a 16 jugadores), partidos y estadísticas.">
+  <title>HoopManager - Administración de Torneos de Baloncesto</title>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="styles.css?v=20261116_01">
+  <style>
+    /* Eliminación forzada de flechas/spinners */
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button {
+      -webkit-appearance: none !important;
+      margin: 0 !important;
+    }
+    input[type="number"] {
+      -moz-appearance: textfield !important;
+      appearance: textfield !important;
+    }
+    .quarter-score-input {
+      width: 72px !important;
+      height: 44px !important;
+      font-size: 1.15rem !important;
+      font-weight: 700 !important;
+      text-align: center !important;
+      padding: 0.4rem 0.5rem !important;
+      margin: 0 auto !important;
+      display: block !important;
+    }
+    .stat-input {
+      width: 68px !important;
+      height: 40px !important;
+      font-size: 1.05rem !important;
+      font-weight: 700 !important;
+      text-align: center !important;
+      padding: 0.35rem 0.5rem !important;
+      margin: 0 auto !important;
+      display: block !important;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- VISTA DE LOGIN (ACCESO ADMINISTRATIVO) -->
+  <div id="login-view" class="login-backdrop">
+    <div class="login-card">
+      <div class="login-header">
+        <div class="login-badge-icon">🏀</div>
+        <h2 class="login-title">HoopManager</h2>
+        <p class="login-subtitle">Gestión & Control de Torneos de Baloncesto</p>
+      </div>
+
+      <form id="form-login" onsubmit="handleLoginSubmit(event)">
+        <div id="login-error-alert" class="login-alert hidden">
+          <span>⚠️</span>
+          <span id="login-error-text">Usuario o contraseña incorrectos.</span>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1.25rem;">
+          <label class="form-label" for="login-username" style="display: flex; align-items: center; gap: 0.4rem; font-weight: 600;">
+            <span>👤</span> Usuario
+          </label>
+          <input type="text" id="login-username" class="form-input login-input" placeholder="admin" required autocomplete="username" autofocus>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+          <label class="form-label" for="login-password" style="display: flex; align-items: center; justify-content: space-between; font-weight: 600;">
+            <span style="display: flex; align-items: center; gap: 0.4rem;"><span>🔒</span> Contraseña</span>
+            <button type="button" id="btn-toggle-pwd" class="btn-toggle-pwd" onclick="togglePasswordVisibility()">Mostrar</button>
+          </label>
+          <input type="password" id="login-password" class="form-input login-input" placeholder="••••••••" required autocomplete="current-password">
+        </div>
+
+        <button type="submit" id="btn-login-submit" class="btn btn-primary login-submit-btn">
+          <span id="btn-login-label">Iniciar Sesión ➔</span>
+          <span id="btn-login-spinner" class="login-spinner hidden"></span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- CONTENEDOR PRINCIPAL DE LA APLICACIÓN (PROTEGIDO TRAS LOGIN) -->
+  <div id="app-wrapper" class="hidden">
+
+  <!-- Navigation Bar -->
+  <header class="navbar">
+    <div class="app-container navbar-inner">
+      <div class="brand">
+        <div class="brand-icon">🏀</div>
+        <div>
+          <h1 style="font-size: 1.3rem; font-weight: 800; margin: 0;">HoopManager</h1>
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.1rem;">
+            <select id="select-active-tournament" class="form-select" style="padding: 0.2rem 0.5rem; font-size: 0.8rem; background: rgba(30, 41, 59, 0.9); border-color: rgba(249, 115, 22, 0.4); max-width: 250px;">
+            </select>
+            <button id="btn-modal-new-tournament" class="btn btn-primary btn-sm" style="padding: 0.2rem 0.6rem; font-size: 0.75rem;" title="Crear Nuevo Torneo">
+              + Nuevo Torneo
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <nav class="nav-links">
+        <button class="btn btn-secondary btn-active" data-tab="dashboard">🏆 Inicio</button>
+        <button class="btn btn-secondary" data-tab="standings">🥇 Posiciones & Basket Avg</button>
+        <button class="btn btn-secondary" data-tab="matches">📅 Partidos & Fixture</button>
+        <button class="btn btn-secondary" data-tab="teams">👥 Equipos & Nómina (5-16)</button>
+        <button class="btn btn-secondary" data-tab="stats">📊 Estadísticas</button>
+      </nav>
+
+      <div style="display: flex; gap: 0.65rem; align-items: center; flex-wrap: wrap;">
+        <span id="badge-db-status" class="badge badge-win" style="font-size: 0.7rem;">🐘 PostgreSQL Activo</span>
+        <button id="btn-reset-demo" class="btn btn-secondary btn-sm" title="Restablecer datos de demostración">
+          🔄 Demo
+        </button>
+
+        <div id="user-session-pill" class="user-session-pill">
+          <span class="user-badge">
+            <span style="color: var(--primary-orange);">👤</span>
+            <span id="nav-username">admin</span>
+          </span>
+          <button id="btn-logout" class="btn btn-secondary btn-sm btn-logout" onclick="logout()" title="Cerrar sesión">
+            🚪 Salir
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="app-container" style="padding-top: 1.5rem; padding-bottom: 3rem;">
+
+    <!-- TAB 1: DASHBOARD -->
+    <section id="tab-dashboard" class="tab-content">
+      
+      <!-- Hero Banner -->
+      <div class="glass-card" style="margin-bottom: 1.5rem; background: linear-gradient(135deg, rgba(249, 115, 22, 0.15) 0%, rgba(17, 24, 39, 0.95) 100%); border: 1px solid rgba(249, 115, 22, 0.3); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <span class="badge badge-orange" style="margin-bottom: 0.5rem;">🏀 TORNEO EN CURSO</span>
+          <h2 id="hero-tournament-title" style="font-size: 2rem; font-weight: 800; margin-bottom: 0.25rem;">Liga de Baloncesto Apertura 2026</h2>
+          <p id="hero-tournament-meta" style="color: var(--text-secondary); font-size: 0.95rem;">
+            Categoría: <strong>Masculino Mayor</strong> • Temporada: <strong>2026</strong> • Desempate: <strong>Diferencia de Puntos (PF - PC)</strong>
+          </p>
+        </div>
+        <div style="display: flex; gap: 0.75rem;">
+          <button id="dash-btn-create-team" class="btn btn-primary">
+            + Inscribir Equipo (5 a 16 Jugadores)
+          </button>
+          <button id="dash-btn-create-match" class="btn btn-secondary">
+            + Programar Partido
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI Grid -->
+      <div class="grid-4" style="margin-bottom: 1.5rem;">
+        <div class="glass-card glass-card-interactive">
+          <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700;">EQUIPOS INSCRITOS</span>
+          <h3 id="dash-teams-count" style="font-size: 1.8rem; font-weight: 900; color: var(--text-primary); margin-top: 0.2rem;">-</h3>
+        </div>
+
+        <div class="glass-card glass-card-interactive">
+          <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700;">PARTIDOS JUGADOS</span>
+          <h3 id="dash-matches-count" style="font-size: 1.8rem; font-weight: 900; color: var(--status-win); margin-top: 0.2rem;">-</h3>
+        </div>
+
+        <div class="glass-card glass-card-interactive">
+          <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700;">LÍDER DEL TORNEO</span>
+          <h3 id="dash-leader-team" style="font-size: 1.25rem; font-weight: 800; color: #fbbf24; margin-top: 0.2rem;">-</h3>
+        </div>
+
+        <div class="glass-card glass-card-interactive">
+          <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700;">MÁXIMO ANOTADOR</span>
+          <h3 id="dash-top-scorer" style="font-size: 1.25rem; font-weight: 800; color: var(--primary-orange); margin-top: 0.2rem;">-</h3>
+        </div>
+      </div>
+
+      <!-- Quick Preview Grid -->
+      <div class="glass-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h3 style="font-size: 1.2rem; font-weight: 800; margin: 0;">Tabla de Posiciones de este Torneo</h3>
+          <span style="font-size: 0.8rem; color: var(--text-secondary);">Top clasificados</span>
+        </div>
+        <div class="table-container">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>POS</th>
+                <th>EQUIPO</th>
+                <th>PJ</th>
+                <th>PG</th>
+                <th>PP</th>
+                <th>DIF (PF-PC)</th>
+                <th>PTS</th>
+              </tr>
+            </thead>
+            <tbody id="dash-standings-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- TAB 2: STANDINGS & BASKET AVERAGE -->
+    <section id="tab-standings" class="tab-content hidden">
+      <div class="glass-card" style="margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <h2 style="font-size: 1.5rem; font-weight: 800;">Tabla Oficial de Posiciones & Basket Average</h2>
+          <p id="standings-tournament-subtitle" style="color: var(--text-secondary); font-size: 0.85rem;">Calculada en tiempo real para el torneo seleccionado.</p>
+        </div>
+        <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+          <button id="btn-export-standings-csv" class="btn btn-secondary btn-sm" onclick="exportStandingsCSV()" style="font-weight: 700;">
+            📥 Exportar Posiciones CSV
+          </button>
+          <button id="btn-export-standings-pdf" class="btn btn-secondary btn-sm" onclick="exportStandingsPDF()" style="font-weight: 700; color: var(--primary-orange); border-color: rgba(249,115,22,0.4);" title="Exportar Tabla Oficial de Posiciones a PDF">
+            📄 Exportar Posiciones PDF
+          </button>
+          <button id="btn-toggle-tiebreaker" class="btn btn-secondary btn-sm" style="font-weight: 700; color: var(--primary-orange);"></button>
+        </div>
+      </div>
+
+      <div class="glass-card">
+        <div class="table-container">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>POS</th>
+                <th>EQUIPO</th>
+                <th style="text-align:center;">PJ</th>
+                <th style="text-align:center;">PG</th>
+                <th style="text-align:center;">PP</th>
+                <th style="text-align:center;">PF</th>
+                <th style="text-align:center;">PC</th>
+                <th style="text-align:center;">DIF (PF-PC)</th>
+                <th style="text-align:center;">BASKET AVG (PF/PC)</th>
+                <th style="text-align:center;">PTS</th>
+              </tr>
+            </thead>
+            <tbody id="standings-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: MATCHES & FIXTURE -->
+    <section id="tab-matches" class="tab-content hidden">
+      <div class="glass-card" style="margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <h2 style="font-size: 1.5rem; font-weight: 800;">Calendario de Partidos y Fixture</h2>
+          <p id="matches-tournament-subtitle" style="color: var(--text-secondary); font-size: 0.85rem;">Partidos entre equipos inscritos en este torneo.</p>
+        </div>
+        <div style="display: flex; gap: 0.75rem;">
+          <button id="btn-generate-fixture" class="btn btn-secondary">✨ Generar Fixture Auto (Torneo Actual)</button>
+          <button id="btn-add-match" class="btn btn-primary">+ Programar Partido</button>
+        </div>
+      </div>
+
+      <div id="matches-grid" class="grid-2"></div>
+    </section>
+
+    <!-- TAB 4: TEAMS & ROSTERS -->
+    <section id="tab-teams" class="tab-content hidden">
+      <div class="glass-card" style="margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <h2 style="font-size: 1.5rem; font-weight: 800;">Equipos y Plantillas Oficiales (5 a 16 Jugadores)</h2>
+          <p id="teams-tournament-subtitle" style="color: var(--text-secondary); font-size: 0.85rem;">Equipos inscritos con opción de editar nóminas en cualquier momento.</p>
+        </div>
+        <button id="btn-add-team-full" class="btn btn-primary">
+          + Inscribir Equipo con Nómina
+        </button>
+      </div>
+
+      <div id="teams-list"></div>
+    </section>
+
+    <!-- TAB 5: STATS LEADERBOARD -->
+    <section id="tab-stats" class="tab-content hidden">
+      <div class="glass-card" style="margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <h2 style="font-size: 1.5rem; font-weight: 800;">Estadísticas Individuales por Categoría</h2>
+          <p style="color: var(--text-secondary); font-size: 0.85rem;">Consulta los líderes del torneo por categorías separadas (Puntos, Rebotes, Asistencias, Faltas) o la tabla completa en esta misma ventana.</p>
+        </div>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+          <div id="stats-category-pills" style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+            <button class="btn btn-primary btn-sm stats-pill active" data-cat="all" onclick="setStatsCategory('all')">🔲 Vista Dividida (Todas)</button>
+            <button class="btn btn-secondary btn-sm stats-pill" data-cat="pts" onclick="setStatsCategory('pts')">🏀 Puntos</button>
+            <button class="btn btn-secondary btn-sm stats-pill" data-cat="reb" onclick="setStatsCategory('reb')">🛡️ Rebotes</button>
+            <button class="btn btn-secondary btn-sm stats-pill" data-cat="ast" onclick="setStatsCategory('ast')">🎯 Asistencias</button>
+            <button class="btn btn-secondary btn-sm stats-pill" data-cat="fouls" onclick="setStatsCategory('fouls')">⚠️ Faltas</button>
+            <button class="btn btn-secondary btn-sm stats-pill" data-cat="table" onclick="setStatsCategory('table')">📋 Tabla Consolidada</button>
+          </div>
+          <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+            <button class="btn btn-secondary btn-sm" onclick="exportCurrentStatsCSV()" title="Exportar la vista actual a formato CSV" style="font-weight: 700;">
+              📥 Vista CSV
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="exportCurrentStatsPDF()" title="Exportar la vista actual a formato PDF" style="font-weight: 700; color: var(--primary-orange); border-color: rgba(249,115,22,0.4);">
+              📄 Vista PDF
+            </button>
+            <button class="btn btn-primary btn-sm" onclick="exportAllStatsCSV()" title="Descargar reporte completo con todas las categorías en CSV" style="font-weight: 700;">
+              📊 Todo CSV
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="exportStatsLeaderboardPDF()" title="Exportar reporte oficial de estadísticas a PDF" style="font-weight: 700; color: var(--primary-orange); border-color: rgba(249,115,22,0.4);">
+              📄 Todo PDF
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div id="stats-content-area"></div>
+    </section>
+
+  </main>
+
+  <!-- MODAL: CREAR NUEVO TORNEO -->
+  <div id="modal-tournament" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 550px;">
+      <h3 style="font-size: 1.4rem; font-weight: 800; margin-bottom: 1rem; color: var(--primary-orange);">
+        🏆 Crear Nuevo Torneo de Baloncesto
+      </h3>
+      <form id="form-new-tournament">
+        <div class="form-group">
+          <label class="form-label">Nombre del Torneo</label>
+          <input type="text" id="input-tourney-name" class="form-input" placeholder="Ej. Torneo Clausura 2026" required>
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label">Categoría</label>
+            <input type="text" id="input-tourney-category" class="form-input" placeholder="Ej. Masculino Mayor / U-18" value="Masculino Mayor" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Temporada / Año</label>
+            <input type="text" id="input-tourney-season" class="form-input" placeholder="2026" value="2026" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Criterio de Desempate (Gol / Basket Average)</label>
+          <select id="input-tourney-tiebreaker" class="form-select">
+            <option value="diff">Diferencia de Puntos (PF - PC)</option>
+            <option value="ratio">Basket Average / Cociente (PF / PC)</option>
+          </select>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('modal-tournament')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Crear Torneo</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: CREAR EQUIPO CON NÓMINA DINÁMICA (5 A 16 JUGADORES) -->
+  <div id="modal-team-15" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 860px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+        <div>
+          <h3 style="font-size: 1.35rem; font-weight: 800; color: var(--primary-orange); margin: 0;">
+            🛡️ Inscribir Equipo y Plantilla (5 a 16 Jugadores)
+          </h3>
+          <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">Inicia con mínimo 5 jugadores (titulares) y agrega manualmente hasta 16.</p>
+        </div>
+        <span class="badge badge-win" id="badge-roster-count">5 / 16 Jugadores (Mínimo 5)</span>
+      </div>
+
+      <form id="form-team-15">
+        <div class="glass-card" style="padding: 1rem; margin-bottom: 1.25rem;">
+          <h4 style="font-size: 0.85rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.75rem;">1. Información del Equipo</h4>
+          <div class="grid-3">
+            <div class="form-group" style="margin: 0;">
+              <label class="form-label">Nombre del Equipo</label>
+              <input type="text" id="team-15-name" class="form-input" placeholder="Ej. Toros del Valle" required>
+            </div>
+            <div class="form-group" style="margin: 0;">
+              <label class="form-label">Abreviatura (3 letras)</label>
+              <input type="text" id="team-15-short" class="form-input" maxlength="3" placeholder="TOR" required>
+            </div>
+            <div class="form-group" style="margin: 0;">
+              <label class="form-label">Color del Uniforme</label>
+              <input type="color" id="team-15-color" class="form-input" value="#f97316" style="height: 42px; padding: 0.2rem;">
+            </div>
+          </div>
+          <div style="margin-top: 0.75rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+            <label class="form-label" style="margin: 0;">Escudo Emoji:</label>
+            <div id="team-15-emojis" style="display: flex; gap: 0.35rem; flex-wrap: wrap;">
+              <button type="button" class="btn btn-secondary btn-sm emoji-choice" data-emoji="🏀">🏀</button>
+              <button type="button" class="btn btn-secondary btn-sm emoji-choice" data-emoji="🐂">🐂</button>
+              <button type="button" class="btn btn-secondary btn-sm emoji-choice" data-emoji="🦅">🦅</button>
+              <button type="button" class="btn btn-secondary btn-sm emoji-choice" data-emoji="⚡">⚡</button>
+              <button type="button" class="btn btn-secondary btn-sm emoji-choice" data-emoji="🔥">🔥</button>
+              <button type="button" class="btn btn-secondary btn-sm emoji-choice" data-emoji="👑">👑</button>
+              <button type="button" class="btn btn-secondary btn-sm emoji-choice" data-emoji="🦁">🦁</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="glass-card" style="padding: 1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+            <h4 style="font-size: 0.85rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin: 0;">
+              2. Jugadores de la Plantilla (Mínimo 5, Máximo 16)
+            </h4>
+            
+            <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+              <button type="button" id="btn-add-single-player" class="btn btn-primary btn-sm">
+                ➕ Añadir Jugador Manualmente
+              </button>
+              <button type="button" id="btn-fill-5" class="btn btn-secondary btn-sm">
+                Quinteto Titular (5)
+              </button>
+              <button type="button" id="btn-fill-16" class="btn btn-secondary btn-sm" style="color: var(--primary-orange);">
+                Plantilla Completa (16)
+              </button>
+            </div>
+          </div>
+
+          <div class="table-container" style="max-height: 310px; overflow-y: auto;">
+            <table class="custom-table" style="font-size: 0.825rem;">
+              <thead>
+                <tr>
+                  <th style="width: 35px;">#</th>
+                  <th>Nombre del Jugador</th>
+                  <th style="width: 70px;">Dorsal</th>
+                  <th style="width: 140px;">Posición</th>
+                  <th style="width: 90px;">Estatura</th>
+                  <th style="width: 50px; text-align: center;">Acción</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-roster-15"></tbody>
+            </table>
+          </div>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.5rem 0 0 0;">
+            * Mínimo 5 jugadores obligatorios para registrar el equipo. Máximo permitido: 16 jugadores.
+          </p>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.25rem;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('modal-team-15')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar Equipo en PostgreSQL</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: EDITAR EQUIPO Y PLANTILLA EXISTENTE -->
+  <div id="modal-team-edit" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 860px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+        <div>
+          <h3 style="font-size: 1.35rem; font-weight: 800; color: var(--accent-cyan); margin: 0;">
+            ✏️ Editar Plantilla y Datos del Equipo
+          </h3>
+          <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">Modifica jugadores, dorsales, posiciones o agrega/elimina hasta el límite de 16.</p>
+        </div>
+        <span class="badge badge-win" id="badge-edit-roster-count">Roster</span>
+      </div>
+
+      <form id="form-team-edit">
+        <input type="hidden" id="edit-team-id">
+        <input type="hidden" id="edit-team-dbid">
+
+        <div class="glass-card" style="padding: 1rem; margin-bottom: 1.25rem;">
+          <h4 style="font-size: 0.85rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.75rem;">1. Datos del Club</h4>
+          <div class="grid-3">
+            <div class="form-group" style="margin: 0;">
+              <label class="form-label">Nombre del Equipo</label>
+              <input type="text" id="edit-team-name" class="form-input" required>
+            </div>
+            <div class="form-group" style="margin: 0;">
+              <label class="form-label">Abreviatura (3 letras)</label>
+              <input type="text" id="edit-team-short" class="form-input" maxlength="3" required>
+            </div>
+            <div class="form-group" style="margin: 0;">
+              <label class="form-label">Color del Uniforme</label>
+              <input type="color" id="edit-team-color" class="form-input" style="height: 42px; padding: 0.2rem;">
+            </div>
+          </div>
+          <div style="margin-top: 0.75rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+            <label class="form-label" style="margin: 0;">Escudo Emoji:</label>
+            <div id="edit-team-emojis" style="display: flex; gap: 0.35rem; flex-wrap: wrap;">
+              <button type="button" class="btn btn-secondary btn-sm emoji-edit-choice" data-emoji="🏀">🏀</button>
+              <button type="button" class="btn btn-secondary btn-sm emoji-edit-choice" data-emoji="🐂">🐂</button>
+              <button type="button" class="btn btn-secondary btn-sm emoji-edit-choice" data-emoji="🦅">🦅</button>
+              <button type="button" class="btn btn-secondary btn-sm emoji-edit-choice" data-emoji="⚡">⚡</button>
+              <button type="button" class="btn btn-secondary btn-sm emoji-edit-choice" data-emoji="🔥">🔥</button>
+              <button type="button" class="btn btn-secondary btn-sm emoji-edit-choice" data-emoji="👑">👑</button>
+              <button type="button" class="btn btn-secondary btn-sm emoji-edit-choice" data-emoji="🦁">🦁</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="glass-card" style="padding: 1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+            <h4 style="font-size: 0.85rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin: 0;">
+              2. Jugadores Inscritos (Mínimo 5, Máximo 16)
+            </h4>
+            
+            <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+              <button type="button" id="btn-edit-add-single-player" class="btn btn-primary btn-sm">
+                ➕ Añadir Jugador a la Nómina
+              </button>
+            </div>
+          </div>
+
+          <div class="table-container" style="max-height: 310px; overflow-y: auto;">
+            <table class="custom-table" style="font-size: 0.825rem;">
+              <thead>
+                <tr>
+                  <th style="width: 35px;">#</th>
+                  <th>Nombre del Jugador</th>
+                  <th style="width: 70px;">Dorsal</th>
+                  <th style="width: 140px;">Posición</th>
+                  <th style="width: 90px;">Estatura</th>
+                  <th style="width: 50px; text-align: center;">Acción</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-roster-edit"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.25rem;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('modal-team-edit')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Actualizar Nómina en PostgreSQL</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: PROGRAMAR PARTIDO MANUAL -->
+  <div id="modal-match-new" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 600px;">
+      <h3 style="font-size: 1.35rem; font-weight: 800; margin-bottom: 1rem; color: var(--primary-orange);">
+        📅 Programar Partido en este Torneo
+      </h3>
+      <form id="form-new-match">
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label">Equipo Local</label>
+            <select id="match-home-team" class="form-select" required></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Equipo Visitante</label>
+            <select id="match-away-team" class="form-select" required></select>
+          </div>
+        </div>
+        <div class="grid-3">
+          <div class="form-group">
+            <label class="form-label">Jornada #</label>
+            <input type="number" id="match-round" class="form-input" min="1" value="1" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Fecha</label>
+            <input type="date" id="match-date" class="form-input" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Hora</label>
+            <input type="time" id="match-time" class="form-input" value="19:00" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Cancha / Gimnasio</label>
+          <input type="text" id="match-venue" class="form-input" value="Cancha Principal" required>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('modal-match-new')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Programar Partido</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: CONSOLA DE PARTIDO (SCORE POR CUARTOS) -->
+  <div id="match-console-modal" class="modal-overlay hidden"></div>
+
+  </div> <!-- /#app-wrapper -->
+
+  <script src="html2pdf.bundle.min.js"></script>
+  <script src="app.js?v=20261116_01"></script>
+</body>
+</html>

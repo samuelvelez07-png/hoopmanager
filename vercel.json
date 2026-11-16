@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "https://tier-anderson-concord-cape.trycloudflare.com/api/$1"
+    },
+    {
+      "source": "/frontend/(.*)",
+      "destination": "/$1"
+    }
+  ]
+}

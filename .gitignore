@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+*.log
+tunnel_url.txt
+server.log
+cloudflared.log
+.vercel/
+.archive_vite/
