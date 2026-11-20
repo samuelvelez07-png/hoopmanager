@@ -457,6 +457,61 @@ class HoopManagerHandler(http.server.SimpleHTTPRequestHandler):
                     conn.commit()
                     self.send_json({"success": True, "id": match_id})
 
+                # 4.1 Modificar / Actualizar partido
+                elif path == "/api/matches/update":
+                    match_id = payload.get("id")
+                    if not match_id:
+                        self.send_json({"error": "Falta id del partido"}, 400)
+                        return
+                    cur.execute(
+                        """UPDATE matches
+                           SET round = %s,
+                               home_team_id = %s,
+                               away_team_id = %s,
+                               match_date = %s,
+                               match_time = %s,
+                               venue = %s
+                           WHERE id = %s
+                           RETURNING id;""",
+                        (
+                            payload.get("round", 1),
+                            payload["home_team_id"],
+                            payload["away_team_id"],
+                            payload.get("date", "2026-10-15"),
+                            payload.get("time", "19:00"),
+                            payload.get("venue", "Cancha Principal"),
+                            match_id
+                        )
+                    )
+                    updated = cur.fetchone()
+                    if updated:
+                        # Limpiar estadísticas de jugadores si los equipos cambiaron
+                        cur.execute(
+                            """DELETE FROM match_player_stats
+                               WHERE match_id = %s
+                                 AND player_id NOT IN (
+                                   SELECT id FROM players WHERE team_id IN (%s, %s)
+                                 );""",
+                            (match_id, payload["home_team_id"], payload["away_team_id"])
+                        )
+                        conn.commit()
+                        self.send_json({"success": True, "updated": updated["id"]})
+                    else:
+                        self.send_json({"error": "Partido no encontrado"}, 404)
+                    return
+
+                # 4.2 Eliminar partido via POST (compatibilidad fallback)
+                elif path == "/api/matches/delete":
+                    match_id = payload.get("id")
+                    if not match_id:
+                        self.send_json({"error": "Falta id del partido"}, 400)
+                        return
+                    cur.execute("DELETE FROM matches WHERE id = %s RETURNING id;", (match_id,))
+                    deleted = cur.fetchone()
+                    conn.commit()
+                    self.send_json({"success": True, "deleted": deleted["id"] if deleted else None})
+                    return
+
                 # 5. Generar Fixture por lote para un torneo
                 elif path == "/api/matches/batch":
                     tournament_id = payload.get("tournament_id")
@@ -570,6 +625,15 @@ class HoopManagerHandler(http.server.SimpleHTTPRequestHandler):
                         self.send_json({"success": True, "deleted": deleted["id"] if deleted else None})
                     else:
                         self.send_json({"error": "Missing tournament id"}, 400)
+                elif path == "/api/matches":
+                    m_id = params.get("id", [None])[0]
+                    if m_id:
+                        cur.execute("DELETE FROM matches WHERE id = %s RETURNING id;", (m_id,))
+                        deleted = cur.fetchone()
+                        conn.commit()
+                        self.send_json({"success": True, "deleted": deleted["id"] if deleted else None})
+                    else:
+                        self.send_json({"error": "Missing match id"}, 400)
                 else:
                     self.send_json({"error": "Endpoint not found"}, 404)
         except Exception as e:

@@ -571,12 +571,64 @@
     </div>
   </div>
 
+  <!-- MODAL: EDITAR / MODIFICAR PARTIDO -->
+  <div id="modal-match-edit" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 600px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3 style="font-size: 1.35rem; font-weight: 800; margin: 0; color: var(--primary-orange);">
+          ✏️ Modificar Partido Programado
+        </h3>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="closeModal('modal-match-edit')">✕</button>
+      </div>
+      <form id="form-edit-match">
+        <input type="hidden" id="edit-match-id">
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label">Equipo Local</label>
+            <select id="edit-match-home-team" class="form-select" required></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Equipo Visitante</label>
+            <select id="edit-match-away-team" class="form-select" required></select>
+          </div>
+        </div>
+        <div class="grid-3">
+          <div class="form-group">
+            <label class="form-label">Jornada #</label>
+            <input type="number" id="edit-match-round" class="form-input" min="1" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Fecha</label>
+            <input type="date" id="edit-match-date" class="form-input" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Hora</label>
+            <input type="time" id="edit-match-time" class="form-input" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Cancha / Gimnasio</label>
+          <input type="text" id="edit-match-venue" class="form-input" required>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; gap: 0.75rem; flex-wrap: wrap;">
+          <button type="button" class="btn btn-secondary" onclick="confirmDeleteMatch(document.getElementById('edit-match-id').value)" style="color: #ef4444; border-color: rgba(239,68,68,0.4); font-weight: 700;">
+            🗑️ Eliminar Partido
+          </button>
+          <div style="display: flex; gap: 0.75rem;">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('modal-match-edit')">Cancelar</button>
+            <button type="submit" class="btn btn-primary" id="btn-save-edit-match">Guardar Cambios</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- MODAL: CONSOLA DE PARTIDO (SCORE POR CUARTOS) -->
   <div id="match-console-modal" class="modal-overlay hidden"></div>
 
   </div> <!-- /#app-wrapper -->
 
   <script src="html2pdf.bundle.min.js"></script>
-  <script src="app.js?v=20261116_01"></script>
+  <script src="app.js?v=20261120_01"></script>
 </body>
 </html>

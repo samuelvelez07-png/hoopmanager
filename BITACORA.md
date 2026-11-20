@@ -4,6 +4,29 @@ Este documento registra de forma cronológica todas las modificaciones, adicione
 
 ---
 
+## [2026-11-20] - Modificación y Eliminación de Partidos Programados
+- **Descripción**: Se implementó la capacidad completa de modificar y eliminar partidos directamente desde la interfaz del sistema, permitiendo corregir asignaciones erróneas de equipos, jornadas, fechas u horarios:
+  1. **Modal de Edición de Partidos (`#modal-match-edit`)**:
+     - Modal dedicado con diseño responsive y soporte para selección de Equipo Local y Visitante (con validación para impedir seleccionar el mismo equipo en ambos lados).
+     - Campos para editar Número de Jornada, Fecha (`<input type="date">`), Hora (`<input type="time">`) y Sede / Cancha.
+     - Botón de acción destructiva `🗑️ Eliminar Partido` integrado en el modal y botón `Guardar Cambios`.
+  2. **Controles en Cada Tarjeta de Partido (`renderMatches`)**:
+     - Incorporación del botón `✏️ Editar` para abrir directamente el formulario de modificación con todos los datos pre-cargados del partido.
+     - Incorporación del botón `🗑️` para eliminación rápida con confirmación previa del usuario.
+  3. **Endpoints en Backend y Persistencia en PostgreSQL**:
+     - `POST /api/matches/update`: Actualiza `round`, `home_team_id`, `away_team_id`, `match_date`, `match_time`, `venue` y limpia de forma segura estadísticas huérfanas en `match_player_stats` si los equipos participantes cambiaron.
+     - `DELETE /api/matches?id=...` y `POST /api/matches/delete` (fallback): Elimina el partido en PostgreSQL y sus registros asociados por cascada referencial.
+  4. **Sincronización Local y Notificaciones**:
+     - Métodos `store.updateMatch` y `store.deleteMatch` con actualización inmediata del estado local (`localStorage`), re-renderizado reactivo de la vista y alertas Toast de éxito.
+- **Archivos Modificados**:
+  - `[MODIFICADO]` [`backend/server.py`](file:///home/ubuntu/Documents/SM/backend/server.py) - Endpoints `/api/matches/update`, `/api/matches/delete` y soporte `DELETE /api/matches`.
+  - `[MODIFICADO]` [`index.html`](file:///home/ubuntu/Documents/SM/index.html) y [`frontend/index.html`](file:///home/ubuntu/Documents/SM/frontend/index.html) - Modal `#modal-match-edit` con formulario `#form-edit-match`.
+  - `[MODIFICADO]` [`app.js`](file:///home/ubuntu/Documents/SM/app.js) y [`frontend/app.js`](file:///home/ubuntu/Documents/SM/frontend/app.js) - Métodos `updateMatch`, `deleteMatch`, `openEditMatchModal`, `confirmDeleteMatch`, botones en tarjeta y listener de formulario.
+  - `[MODIFICADO]` [`BITACORA.md`](file:///home/ubuntu/Documents/SM/BITACORA.md) - Registro de cambios.
+- **Estado de Verificación**: Pruebas de integración API en backend y pruebas automáticas de interfaz con Chromium headless verificando renderizado de botones y apertura de modal con valores precargados.
+
+---
+
 ## [2026-11-16] - Corrección Error 404 en Vercel: Ubicación de Assets en Raíz y Limpieza de Configuración
 - **Descripción**: Se solucionó el error `404: NOT_FOUND` al acceder al dominio en Vercel. La causa raíz fue que Vercel, al compilar un repositorio estático con directorio raíz `./`, busca obligatoriamente el archivo `index.html` en la raíz del proyecto. Al estar ubicado únicamente dentro de `frontend/`, Vercel no encontraba la página inicial.
   1. **Assets Estáticos en Raíz**: Se copiaron `index.html`, `styles.css`, `app.js` y `html2pdf.bundle.min.js` a la raíz del repositorio, manteniéndolos también en `frontend/`.

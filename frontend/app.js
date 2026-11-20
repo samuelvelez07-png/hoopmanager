@@ -374,6 +374,79 @@ class Store {
     this.save();
   }
 
+  // Update existing match in PostgreSQL & Local
+  async updateMatch(matchId, updatedData) {
+    const match = this.matches.find(m => m.id === matchId);
+    if (!match) return;
+
+    const hTeam = this.teams.find(t => t.id === updatedData.homeTeamId);
+    const aTeam = this.teams.find(t => t.id === updatedData.awayTeamId);
+
+    if (match.dbId && hTeam?.dbId && aTeam?.dbId) {
+      try {
+        const res = await fetch('/api/matches/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: match.dbId,
+            round: updatedData.round,
+            home_team_id: hTeam.dbId,
+            away_team_id: aTeam.dbId,
+            date: updatedData.date,
+            time: updatedData.time,
+            venue: updatedData.venue
+          })
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          alert('Error actualizando en base de datos: ' + (err.error || ''));
+          return;
+        }
+      } catch (e) {
+        console.log('Error updating match in PostgreSQL:', e);
+      }
+    }
+
+    match.round = updatedData.round;
+    match.homeTeamId = updatedData.homeTeamId;
+    match.awayTeamId = updatedData.awayTeamId;
+    match.date = updatedData.date;
+    match.time = updatedData.time;
+    match.venue = updatedData.venue;
+
+    this.save();
+    render();
+    showToastNotification('✅ Partido modificado exitosamente');
+  }
+
+  // Delete match in PostgreSQL & Local
+  async deleteMatch(matchId) {
+    const match = this.matches.find(m => m.id === matchId);
+    if (!match) return;
+
+    if (match.dbId) {
+      try {
+        let res = await fetch(`/api/matches?id=${match.dbId}`, {
+          method: 'DELETE'
+        });
+        if (!res.ok) {
+          res = await fetch('/api/matches/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: match.dbId })
+          });
+        }
+      } catch (e) {
+        console.log('Error deleting match in PostgreSQL:', e);
+      }
+    }
+
+    this.matches = this.matches.filter(m => m.id !== matchId);
+    this.save();
+    render();
+    showToastNotification('🗑️ Partido eliminado exitosamente');
+  }
+
   getStandings() {
     const activeTourney = this.getActiveTournament();
     const activeTeams = this.getActiveTeams();
@@ -817,6 +890,35 @@ function setupModals() {
     store.save();
     closeModal('modal-match-new');
   });
+
+  // Edit Match Form Submission
+  document.getElementById('form-edit-match')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const matchId = document.getElementById('edit-match-id').value;
+    const homeId = document.getElementById('edit-match-home-team').value;
+    const awayId = document.getElementById('edit-match-away-team').value;
+
+    if (homeId === awayId) {
+      alert('El equipo local y el visitante no pueden ser el mismo.');
+      return;
+    }
+
+    const round = parseInt(document.getElementById('edit-match-round').value) || 1;
+    const date = document.getElementById('edit-match-date').value;
+    const time = document.getElementById('edit-match-time').value;
+    const venue = document.getElementById('edit-match-venue').value;
+
+    await store.updateMatch(matchId, {
+      homeTeamId: homeId,
+      awayTeamId: awayId,
+      round,
+      date,
+      time,
+      venue
+    });
+
+    closeModal('modal-match-edit');
+  });
 }
 
 function saveCurrentRosterFromInputs() {
@@ -1026,6 +1128,45 @@ function openModalNewMatch() {
   openModal('modal-match-new');
 }
 
+window.openEditMatchModal = function(matchId) {
+  const match = store.matches.find(m => m.id === matchId);
+  if (!match) return;
+
+  const activeTeams = store.getActiveTeams();
+  const selHome = document.getElementById('edit-match-home-team');
+  const selAway = document.getElementById('edit-match-away-team');
+  if (!selHome || !selAway) return;
+
+  selHome.innerHTML = activeTeams.map(t => `<option value="${t.id}">${t.logo} ${t.name}</option>`).join('');
+  selAway.innerHTML = activeTeams.map(t => `<option value="${t.id}">${t.logo} ${t.name}</option>`).join('');
+
+  document.getElementById('edit-match-id').value = match.id;
+  selHome.value = match.homeTeamId;
+  selAway.value = match.awayTeamId;
+  document.getElementById('edit-match-round').value = match.round || 1;
+
+  const dateVal = match.date ? (typeof match.date === 'string' ? match.date.split('T')[0] : new Date(match.date).toISOString().split('T')[0]) : '';
+  document.getElementById('edit-match-date').value = dateVal;
+  document.getElementById('edit-match-time').value = match.time ? match.time.slice(0, 5) : '19:00';
+  document.getElementById('edit-match-venue').value = match.venue || 'Cancha Principal';
+
+  openModal('modal-match-edit');
+};
+
+window.confirmDeleteMatch = async function(matchId) {
+  if (!matchId) return;
+  const match = store.matches.find(m => m.id === matchId);
+  if (!match) return;
+  const hTeam = store.teams.find(t => t.id === match.homeTeamId);
+  const aTeam = store.teams.find(t => t.id === match.awayTeamId);
+  const matchTitle = (hTeam && aTeam) ? `${hTeam.name} vs ${aTeam.name}` : 'este partido';
+
+  if (confirm(`¿Estás seguro de que deseas eliminar ${matchTitle} (Jornada ${match.round || 1})?\nEsta acción no se puede deshacer.`)) {
+    closeModal('modal-match-edit');
+    await store.deleteMatch(matchId);
+  }
+};
+
 window.openModal = function(modalId) {
   document.getElementById(modalId)?.classList.remove('hidden');
 };
@@ -1171,9 +1312,15 @@ function renderMatches() {
             </div>
           </div>
 
-          <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border-color); padding-top:0.6rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border-color); padding-top:0.6rem; flex-wrap:wrap; gap:0.5rem;">
             <span style="font-size:0.8rem; color:var(--text-muted);">📍 ${m.venue}</span>
-            <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+            <div style="display:flex; gap:0.4rem; flex-wrap:wrap; align-items:center;">
+              <button class="btn btn-secondary btn-sm" onclick="openEditMatchModal('${m.id}')" title="Modificar partido" style="font-weight:700;">
+                ✏️ Editar
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="confirmDeleteMatch('${m.id}')" title="Eliminar partido" style="color:#ef4444; border-color:rgba(239,68,68,0.3); font-weight:700;">
+                🗑️
+              </button>
               <button class="btn btn-secondary btn-sm" onclick="exportMatchConsoleCSV('${m.id}')" title="Exportar planilla a CSV" style="font-weight:700;">
                 📥 CSV
               </button>
